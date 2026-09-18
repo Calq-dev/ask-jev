@@ -73,9 +73,15 @@ TYPESAFE_API_KEY=$(op read "op://Calq/TypeSafe API/credential") claude
 
 ## Making it a habit
 
-The tools only help if the agent reaches for them. Put a line in your project's `CLAUDE.md`:
+The tools only help if the agent reaches for them, so the plugin brings the reminder itself. You
+do not have to touch a single `CLAUDE.md`.
 
-> When you need one fact about a file, call `ask_file` instead of reading the file.
+- A **SessionStart hook** adds one line of context at the start of every session, in every
+  project: what the tools are and how to read the number. About fifty tokens.
+- A **skill** carries the detail — how to phrase a question, when not to use the tools — and
+  loads only when the task calls for it, so it costs nothing the rest of the time.
+
+Install the plugin and both come along. Colleagues install it once and have the same.
 
 ## Limits
 
