@@ -1,4 +1,4 @@
-# jev-ask
+# ask-jev
 
 Ask about a file instead of reading it.
 
@@ -63,13 +63,13 @@ open it yourself. A probability says where to look, not what is true.
 ## Install
 
 ```bash
-claude plugin marketplace add janegbert/jev-ask
-claude plugin install jev-ask@jev-ask
+claude plugin marketplace add janegbert/ask-jev
+claude plugin install ask-jev@ask-jev
 ```
 
-The same plugin lives under the Calq org as `Calq-dev/jev-ask`. Either marketplace works.
+The same plugin lives under the Calq org as `Calq-dev/ask-jev`. Either marketplace works.
 
-Then `/plugin configure jev-ask@jev-ask` and paste your TypeSafe key. Leave it empty to use
+Then `/plugin configure ask-jev@ask-jev` and paste your TypeSafe key. Leave it empty to use
 `TYPESAFE_API_KEY` from the environment instead.
 
 The plugin brings its own habit: a session hook adds one line of context at every start, and a

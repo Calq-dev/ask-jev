@@ -1,5 +1,5 @@
 {
-  "name": "jev-ask",
+  "name": "ask-jev",
   "description": "Ask Jev about a file instead of reading it.",
   "owner": {
     "name": "Calq",
@@ -7,7 +7,7 @@
   },
   "plugins": [
     {
-      "name": "jev-ask",
+      "name": "ask-jev",
       "description": "Two tools: one question about one file, and the same question across many files. The file goes to TypeSafe, never into the agent's context.",
       "version": "0.3.0",
       "author": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// jev-ask — answer questions about files without reading them into the agent's context.
+// ask-jev — answer questions about files without reading them into the agent's context.
 //
 // The point: an agent often needs one fact about a file, not the file. Reading a file of
 // six hundred lines costs about twelve thousand tokens; asking Jev costs the answer.
@@ -12,20 +12,20 @@ import { resolve } from "node:path";
 
 const API = "https://api.typesafe.ai/v1/systemone";
 const clean = (v) => (v && !v.startsWith("${") ? v : "");
-const MODEL = clean(process.env.JEV_ASK_MODEL) || "jev-latest";
-const MAX_CHARS = Number(clean(process.env.JEV_ASK_MAX_CHARS)) || 60000;
+const MODEL = clean(process.env.ASK_JEV_MODEL) || "jev-latest";
+const MAX_CHARS = Number(clean(process.env.ASK_JEV_MAX_CHARS)) || 60000;
 const CONCURRENCY = 6;
-const NAME = "jev-ask";
+const NAME = "ask-jev";
 const VERSION = "0.3.0";
 
 /** The key, in order: this plugin's own setting, then the environment. */
 function key() {
-  const k = process.env.JEV_ASK_API_KEY
+  const k = process.env.ASK_JEV_API_KEY
     || process.env.CLAUDE_PLUGIN_OPTION_apiKey
     || process.env.TYPESAFE_API_KEY;
   if (!k) {
     throw new Error(
-      "No TypeSafe key. Set it with /plugin configure jev-ask@jev-ask, " +
+      "No TypeSafe key. Set it with /plugin configure ask-jev@ask-jev, " +
       "or export TYPESAFE_API_KEY before starting Claude Code.");
   }
   return k;

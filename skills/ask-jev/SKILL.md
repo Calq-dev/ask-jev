@@ -1,5 +1,5 @@
 ---
-name: jev-ask
+name: ask-jev
 description: >
   Answer questions about files without reading them into context. Use when you are about to
   open files to find something rather than to change it: which files still use an old helper,
