@@ -63,9 +63,11 @@ open it yourself. A probability says where to look, not what is true.
 ## Install
 
 ```bash
-claude plugin marketplace add Calq-dev/jev-ask
+claude plugin marketplace add janegbert/jev-ask
 claude plugin install jev-ask@jev-ask
 ```
+
+The same plugin lives under the Calq org as `Calq-dev/jev-ask`. Either marketplace works.
 
 Then `/plugin configure jev-ask@jev-ask` and paste your TypeSafe key. Leave it empty to use
 `TYPESAFE_API_KEY` from the environment instead.
