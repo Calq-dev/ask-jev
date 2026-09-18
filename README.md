@@ -38,6 +38,23 @@ Does this file make a network call to an external service?
 
 Seventeen files judged; the agent's context grew by twenty lines.
 
+**`find_in_file(path, question)`** — which line answers a question, and whether the file answers
+it at all. Read those few lines instead of the file.
+
+```
+Where is an exception caught and ignored without logging?
+
+0.91  line 1792  } catch (\Throwable) {
+0.89  line 74    } catch (\Throwable) {
+0.87  line 847   } catch (\Throwable) {
+
+… · answer present 0.96 · 54057 tokens
+```
+
+The `answer present` figure is the part that matters. Ask the same file where it connects to
+Redis, which it never does, and it reads 0.05 with a line in the office of nothing. A confident
+line without that guard is a guess.
+
 ## Reading the number
 
 Above 0.70 is yes. Below 0.30 is no. In between means the answer is not plainly in the file —
@@ -66,7 +83,7 @@ skill carries the detail when the task calls for it. No `CLAUDE.md` to edit, in 
 
 ## Limits
 
-- Yes/no questions only, one thing per question.
+- `ask_file` and `filter_files` take yes/no questions only, one thing per question.
 - Use `grep` when the answer must be exact: line numbers, every call site, a precise string.
 - The file is sent to TypeSafe. Do not use it for files that may not leave your machine.
 - At most eight parts per file; beyond that the answer says how much it did not read.

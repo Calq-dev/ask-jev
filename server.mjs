@@ -16,7 +16,7 @@ const MODEL = clean(process.env.JEV_ASK_MODEL) || "jev-latest";
 const MAX_CHARS = Number(clean(process.env.JEV_ASK_MAX_CHARS)) || 60000;
 const CONCURRENCY = 6;
 const NAME = "jev-ask";
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 /** The key, in order: this plugin's own setting, then the environment. */
 function key() {
@@ -130,6 +130,62 @@ async function pool(items, worker) {
   return out;
 }
 
+const WINDOW_LINES = 200;   // a Choice takes at most 255 options
+const MAX_WINDOWS = 12;
+const LINE_CHARS = 200;
+
+/** Ask which line answers the question, and whether any line does. */
+async function askWindow(path, question, window) {
+  // The lines go in the state once, so both questions can read them. The choice options are
+  // bare ids: repeating the text there would double the tokens and leave the noul blind.
+  const lines = Object.fromEntries(
+    window.lines.map(({ n, text }) => [String(n), text.trim().slice(0, LINE_CHARS)]));
+  const options = Object.fromEntries(Object.keys(lines).map((n) => [n, null]));
+  const body = {
+    state: { path, lines },
+    questions: {
+      line: { type: "choice", instructions: `${question} Answer with the line id.`, criteria: options },
+      exists: {
+        type: "noul",
+        instructions: `Do the lines shown answer this at all: ${question}`,
+        criteria: {
+          true: "One of the lines shown answers it.",
+          false: "None of them do; the answer is elsewhere or absent.",
+        },
+      },
+    },
+    model: MODEL,
+  };
+  const response = await fetch(API, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key()}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`TypeSafe ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  const data = await response.json();
+  const choice = data.answers?.line ?? {};
+  return {
+    exists: data.answers?.exists?.noul ?? 0,
+    probabilities: choice.probabilities ?? {},
+    tokens: data.usage?.input_tokens ?? 0,
+    model: data.model,
+  };
+}
+
+/** Windows of numbered, non-empty lines. Empty lines cannot answer anything. */
+function windows(text) {
+  const numbered = text.split("\n")
+    .map((text, i) => ({ n: i + 1, text }))
+    .filter((line) => line.text.trim().length > 0);
+  const out = [];
+  for (let i = 0; i < numbered.length && out.length < MAX_WINDOWS; i += WINDOW_LINES) {
+    const slice = numbered.slice(i, i + WINDOW_LINES);
+    out.push({ lines: slice, from: slice[0].n, to: slice[slice.length - 1].n });
+  }
+  const seen = out.reduce((sum, w) => sum + w.lines.length, 0);
+  return Object.assign(out, { short: numbered.length - seen, total: numbered.length });
+}
+
 const TOOLS = [
   {
     name: "ask_file",
@@ -153,6 +209,24 @@ const TOOLS = [
     },
   },
   {
+    name: "find_in_file",
+    description:
+      "Ask Jev which line of a file answers a question, without reading the file. Returns the " +
+      "most likely lines with their text, so you can read those few lines instead of the file. " +
+      "Also returns whether the file answers the question at all, which is the part that keeps " +
+      "a confident-looking line from being a guess. Use it to locate something: where is the " +
+      "timeout set, which line raises this error, where is this option read.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Path to the file." },
+        question: { type: "string", description: "What you are looking for, in plain words." },
+        max_results: { type: "number", description: "How many lines to return. Default 5." },
+      },
+      required: ["path", "question"],
+    },
+  },
+  {
     name: "filter_files",
     description:
       "Ask Jev the same yes/no question about many files and get back which ones match, " +
@@ -170,7 +244,7 @@ const TOOLS = [
   },
 ];
 
-function text(value) {
+function text_(value) {
   return { content: [{ type: "text", text: value }] };
 }
 
@@ -187,7 +261,7 @@ async function askFile({ path, questions }) {
   const spread = pieces.length > 1 ? ` · ${pieces.length} parts` : "";
   const missed = pieces.short ? ` · ${pieces.short} lines beyond part ${MAX_PARTS} not read` : "";
   lines.push("", `${path} · ${chars} chars${spread}${missed} · ${tokens} tokens · ${model}`);
-  return text(lines.join("\n"));
+  return text_(lines.join("\n"));
 }
 
 async function filterFiles({ paths, question }) {
@@ -207,10 +281,45 @@ async function filterFiles({ paths, question }) {
     for (const r of failed) lines.push(`  ${r.error}`);
   }
   lines.push("", `${ok.length} files · ${tokens} tokens · ${MODEL}`);
-  return text(lines.join("\n"));
+  return text_(lines.join("\n"));
 }
 
-const HANDLERS = { ask_file: askFile, filter_files: filterFiles };
+async function findInFile({ path, question, max_results }) {
+  if (!question) throw new Error("give a question");
+  const text = await readFile(resolve(path), "utf8");
+  const parts = windows(text);
+  if (parts.length === 0) return text_(`${path} is empty.`);
+
+  const answers = await pool(parts, (w) => askWindow(path, question, w));
+  const failed = answers.find((a) => a.error);
+  if (failed) throw new Error(failed.error);
+
+  const found = [];
+  for (const answer of answers) {
+    for (const [line, probability] of Object.entries(answer.probabilities)) {
+      found.push({ line: Number(line), probability, exists: answer.exists });
+    }
+  }
+  const lines = text.split("\n");
+  const top = found
+    .map((f) => ({ ...f, score: f.probability * f.exists }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(1, Math.min(Number(max_results) || 5, 20)));
+
+  const tokens = answers.reduce((sum, a) => sum + a.tokens, 0);
+  const best = Math.max(...answers.map((a) => a.exists));
+  const out = [`${question}`, ""];
+  if (best < 0.5) out.push(`The file probably does not answer this (${pct(best)}). Lines below are the closest anyway.`, "");
+  for (const f of top) {
+    out.push(`${pct(f.score)}  line ${f.line}  ${(lines[f.line - 1] || "").trim().slice(0, 160)}`);
+  }
+  const missed = parts.short > 0 ? ` · ${parts.short} lines beyond window ${MAX_WINDOWS} not read` : "";
+  out.push("", `${path} · ${parts.total} non-empty lines · ${parts.length} windows${missed} · ` +
+    `answer present ${pct(best)} · ${tokens} tokens · ${answers[0]?.model ?? MODEL}`);
+  return text_(out.join("\n"));
+}
+
+const HANDLERS = { ask_file: askFile, find_in_file: findInFile, filter_files: filterFiles };
 
 function send(message) {
   process.stdout.write(JSON.stringify(message) + "\n");

@@ -20,6 +20,9 @@ cost the same as one, so ask everything you might want at once.
 `filter_files(paths[], question)` — the same question across many files, sorted by probability.
 Use it to narrow a list, then open only what survives.
 
+`find_in_file(path, question)` — which line answers a question, with a guard that says whether the
+file answers it at all. Read the guard first: a confident line under a low guard is a guess.
+
 ## How to ask
 
 **One thing per question.** "Does this file call the old API and lack tests" gives a muddy
