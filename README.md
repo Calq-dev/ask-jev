@@ -48,7 +48,16 @@ claude plugin marketplace add ~/Projects/jev-ask
 claude plugin install jev-ask@jev-ask
 ```
 
-The key comes from the environment, never from a file. Start Claude Code with it:
+Then set the key:
+
+```
+/plugin configure jev-ask@jev-ask
+```
+
+It is stored as a sensitive plugin setting, the same way `fast-jev-compaction` stores its key.
+
+If you would rather keep the key out of any file, leave the setting empty and start Claude Code
+with the key in the environment instead:
 
 ```bash
 TYPESAFE_API_KEY=$(op read "op://Calq/TypeSafe API/credential") claude
@@ -58,6 +67,7 @@ TYPESAFE_API_KEY=$(op read "op://Calq/TypeSafe API/credential") claude
 
 | | Default | |
 |---|---|---|
+| `apiKey` | — | TypeSafe key; leave empty to use `TYPESAFE_API_KEY` |
 | `model` | `jev-latest` | which Jev model |
 | `maxChars` | 60000 | a longer file is cut, and the answer says so |
 

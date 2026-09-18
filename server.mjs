@@ -11,15 +11,23 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const API = "https://api.typesafe.ai/v1/systemone";
-const MODEL = process.env.JEV_ASK_MODEL || "jev-latest";
-const MAX_CHARS = Number(process.env.JEV_ASK_MAX_CHARS || 60000);
+const clean = (v) => (v && !v.startsWith("${") ? v : "");
+const MODEL = clean(process.env.JEV_ASK_MODEL) || "jev-latest";
+const MAX_CHARS = Number(clean(process.env.JEV_ASK_MAX_CHARS)) || 60000;
 const CONCURRENCY = 6;
 const NAME = "jev-ask";
 const VERSION = "0.1.0";
 
+/** The key, in order: this plugin's own setting, then the environment. */
 function key() {
-  const k = process.env.TYPESAFE_API_KEY;
-  if (!k) throw new Error("TYPESAFE_API_KEY is not set. Export it before starting Claude Code.");
+  const k = process.env.JEV_ASK_API_KEY
+    || process.env.CLAUDE_PLUGIN_OPTION_apiKey
+    || process.env.TYPESAFE_API_KEY;
+  if (!k) {
+    throw new Error(
+      "No TypeSafe key. Set it with /plugin configure jev-ask@jev-ask, " +
+      "or export TYPESAFE_API_KEY before starting Claude Code.");
+  }
   return k;
 }
 

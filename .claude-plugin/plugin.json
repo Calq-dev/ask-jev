@@ -4,6 +4,12 @@
   "description": "Ask Jev a question about a file instead of reading it into context.",
   "license": "MIT",
   "userConfig": {
+    "apiKey": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "TypeSafe API key. Leave unset to use TYPESAFE_API_KEY from the environment.",
+      "sensitive": true
+    },
     "model": {
       "type": "string",
       "title": "Jev model",

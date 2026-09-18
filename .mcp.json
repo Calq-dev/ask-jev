@@ -4,7 +4,9 @@
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/server.mjs"],
       "env": {
-        "TYPESAFE_API_KEY": "${TYPESAFE_API_KEY}"
+        "JEV_ASK_API_KEY": "${user_config.apiKey}",
+        "JEV_ASK_MODEL": "${user_config.model}",
+        "JEV_ASK_MAX_CHARS": "${user_config.maxChars}"
       }
     }
   }
