@@ -1,11 +1,11 @@
 {
   "name": "jev-ask",
-  "description": "Vraag Jev iets over een bestand in plaats van het bestand te lezen.",
+  "description": "Ask Jev about a file instead of reading it.",
   "owner": { "name": "Calq", "url": "https://github.com/Calq-dev" },
   "plugins": [
     {
       "name": "jev-ask",
-      "description": "Stelt twee gereedschappen beschikbaar: één vraag over één bestand, en dezelfde vraag over veel bestanden. Het bestand gaat naar TypeSafe, niet naar de context van de agent.",
+      "description": "Two tools: one question about one file, and the same question across many files. The file goes to TypeSafe, never into the agent's context.",
       "version": "0.1.0",
       "author": { "name": "Calq", "url": "https://github.com/Calq-dev" },
       "license": "MIT",

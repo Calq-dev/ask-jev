@@ -1,30 +1,30 @@
 # jev-ask
 
-Vraag Jev iets over een bestand in plaats van het bestand te lezen.
+Ask Jev about a file instead of reading it.
 
-Een agent heeft vaak één feit nodig, niet een bestand. Zelf lezen kost ongeveer twaalfduizend
-tokens, en die tekst wordt daarna bij elke beurt opnieuw meegestuurd. Jev leest het bestand, de
-agent krijgt een kans terug, en het bestand komt nooit in het gesprek.
+An agent often needs one fact, not a file. Reading it costs about twelve thousand tokens, and that
+text then travels along with every later turn. Jev reads the file, the agent gets a probability
+back, and the file never enters the conversation.
 
-## Twee gereedschappen
+## Two tools
 
-**`ask_file`** — één bestand, één tot tien ja-nee-vragen. Alle vragen gaan in één verzoek, dus tien
-vragen kosten hetzelfde als één.
-
-```
-0.99  Staat er een wachtwoord of sleutel hard in dit bestand?
-0.98  Is er een uitzondering die stil wordt weggeslikt?
-0.56  Beschrijft de docstring iets anders dan de functie doet?
-0.05  Bevat dit bestand tests?
-
-/tmp/betaling.py · 299 tekens · 570 tokens · jev-1.13.0
-```
-
-**`filter_files`** — dezelfde vraag over veel bestanden, gesorteerd op waarschijnlijkheid. Om een
-lijst te versmallen voordat je iets opent.
+**`ask_file`** — one file, one to ten yes/no questions. All questions go in a single request, so
+ten cost the same as one.
 
 ```
-Doet dit bestand een netwerkaanroep naar een externe dienst?
+0.99  Is a password or key hard-coded in this file?
+0.98  Is an exception swallowed silently?
+0.56  Does the docstring describe something other than what the function does?
+0.05  Does this file contain tests?
+
+/tmp/payment.py · 299 chars · 570 tokens · jev-1.13.0
+```
+
+**`filter_files`** — the same question across many files, sorted by probability. Use it to narrow a
+list before you open anything.
+
+```
+Does this file make a network call to an external service?
 
 0.90  src/qlab/calibrate.py
 0.85  src/qlab/corpus_checks.py
@@ -34,36 +34,42 @@ Doet dit bestand een netwerkaanroep naar een externe dienst?
 17 files · 29787 tokens · jev-latest
 ```
 
-Zeventien bestanden beoordeeld; de context van de agent groeide met twintig regels.
+Seventeen files judged. The agent's context grew by twenty lines.
 
-## Hoe je de uitkomst leest
+## Reading the answer
 
-Boven 0,70 is ja. Onder 0,30 is nee. Daartussen betekent: lees het bestand zelf. Een kans is geen
-vonnis — hij zegt waar je moet kijken.
+Above 0.70 means yes. Below 0.30 means no. In between means: read the file yourself. A probability
+is not a verdict — it says where to look.
 
-## Installeren
+## Install
 
 ```bash
 claude plugin marketplace add ~/Projects/jev-ask
 claude plugin install jev-ask@jev-ask
 ```
 
-De sleutel komt uit de omgeving, nooit uit een bestand. Start Claude Code met de sleutel erin:
+The key comes from the environment, never from a file. Start Claude Code with it:
 
 ```bash
 TYPESAFE_API_KEY=$(op read "op://Calq/TypeSafe API/credential") claude
 ```
 
-## Instellingen
+## Settings
 
-| | Standaard | |
+| | Default | |
 |---|---|---|
-| `model` | `jev-latest` | welk Jev-model |
-| `maxChars` | 60000 | langer bestand wordt afgekapt; het antwoord zegt dat erbij |
+| `model` | `jev-latest` | which Jev model |
+| `maxChars` | 60000 | a longer file is cut, and the answer says so |
 
-## Grenzen
+## Making it a habit
 
-- Ja-nee-vragen, geen open vragen. Stel één ding per vraag.
-- Een bestand dat niet in één verzoek past, wordt afgekapt. Splits het dan zelf.
-- Het bestand gaat naar TypeSafe. Doe dit niet met bestanden die daar niet heen mogen.
-- Geen afhankelijkheden: één bestand Node, gebruikt `fetch`.
+The tools only help if the agent reaches for them. Put a line in your project's `CLAUDE.md`:
+
+> When you need one fact about a file, call `ask_file` instead of reading the file.
+
+## Limits
+
+- Yes/no questions only. Ask one thing per question.
+- A file that does not fit one request is cut. Split it yourself.
+- The file goes to TypeSafe. Do not use this for files that may not leave your machine.
+- No dependencies: one Node file, using `fetch`.
