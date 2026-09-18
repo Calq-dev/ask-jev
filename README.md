@@ -1,91 +1,75 @@
 # jev-ask
 
-Ask Jev about a file instead of reading it.
+Ask about a file instead of reading it.
 
-An agent often needs one fact, not a file. Reading it costs about twelve thousand tokens, and that
-text then travels along with every later turn. Jev reads the file, the agent gets a probability
-back, and the file never enters the conversation.
+An agent usually needs one fact, not a file. Reading it costs around twelve thousand tokens, and
+that text then travels along with every later turn. Here the file goes to [Jev](https://typesafe.ai),
+the agent gets a probability back, and the file never enters the conversation.
 
 ## Two tools
 
-**`ask_file`** — one file, one to ten yes/no questions. All questions go in a single request, so
-ten cost the same as one.
+**`ask_file(path, questions[])`** — up to ten yes/no questions about one file, in a single request.
+Ten cost the same as one, so ask everything at once.
 
 ```
-0.99  Is a password or key hard-coded in this file?
-0.98  Is an exception swallowed silently?
-0.56  Does the docstring describe something other than what the function does?
-0.05  Does this file contain tests?
+0.91  [lines 1-1416]  Does this file swallow an exception without logging it?
+0.56  [lines 1-1416]  Does it run git commands?
+0.08  [lines 1-1416]  Does it write to a database?
 
-/tmp/payment.py · 299 chars · 570 tokens · jev-1.13.0
+app/Support/CorpusRepository.php · 81075 chars · 2 parts · 22401 tokens · jev-1.13.0
 ```
 
-**`filter_files`** — the same question across many files, sorted by probability. Use it to narrow a
-list before you open anything.
+A file too large for one request is split on line boundaries. The answer says which part it came
+from, so you know where to look.
+
+**`filter_files(paths[], question)`** — the same question across many files, highest first. Narrow
+the list, then open only what survives.
 
 ```
 Does this file make a network call to an external service?
 
 0.90  src/qlab/calibrate.py
 0.85  src/qlab/corpus_checks.py
-…
+0.23  src/qlab/http.py
 0.03  src/qlab/__init__.py
 
 17 files · 29787 tokens · jev-latest
 ```
 
-Seventeen files judged. The agent's context grew by twenty lines.
+Seventeen files judged; the agent's context grew by twenty lines.
 
-## Reading the answer
+## Reading the number
 
-Above 0.70 means yes. Below 0.30 means no. In between means: read the file yourself. A probability
-is not a verdict — it says where to look.
+Above 0.70 is yes. Below 0.30 is no. In between means the answer is not plainly in the file —
+open it yourself. A probability says where to look, not what is true.
 
 ## Install
 
 ```bash
-claude plugin marketplace add ~/Projects/jev-ask
+claude plugin marketplace add Calq-dev/jev-ask
 claude plugin install jev-ask@jev-ask
 ```
 
-Then set the key:
+Then `/plugin configure jev-ask@jev-ask` and paste your TypeSafe key. Leave it empty to use
+`TYPESAFE_API_KEY` from the environment instead.
 
-```
-/plugin configure jev-ask@jev-ask
-```
-
-It is stored as a sensitive plugin setting, the same way `fast-jev-compaction` stores its key.
-
-If you would rather keep the key out of any file, leave the setting empty and start Claude Code
-with the key in the environment instead:
-
-```bash
-TYPESAFE_API_KEY=$(op read "op://Calq/TypeSafe API/credential") claude
-```
+The plugin brings its own habit: a session hook adds one line of context at every start, and a
+skill carries the detail when the task calls for it. No `CLAUDE.md` to edit, in any project.
 
 ## Settings
 
 | | Default | |
 |---|---|---|
-| `apiKey` | — | TypeSafe key; leave empty to use `TYPESAFE_API_KEY` |
+| `apiKey` | — | TypeSafe key; empty falls back to `TYPESAFE_API_KEY` |
 | `model` | `jev-latest` | which Jev model |
-| `maxChars` | 60000 | a longer file is cut, and the answer says so |
-
-## Making it a habit
-
-The tools only help if the agent reaches for them, so the plugin brings the reminder itself. You
-do not have to touch a single `CLAUDE.md`.
-
-- A **SessionStart hook** adds one line of context at the start of every session, in every
-  project: what the tools are and how to read the number. About fifty tokens.
-- A **skill** carries the detail — how to phrase a question, when not to use the tools — and
-  loads only when the task calls for it, so it costs nothing the rest of the time.
-
-Install the plugin and both come along. Colleagues install it once and have the same.
+| `maxChars` | 60000 | characters per part |
 
 ## Limits
 
-- Yes/no questions only. Ask one thing per question.
-- A file that does not fit one request is cut. Split it yourself.
-- The file goes to TypeSafe. Do not use this for files that may not leave your machine.
-- No dependencies: one Node file, using `fetch`.
+- Yes/no questions only, one thing per question.
+- Use `grep` when the answer must be exact: line numbers, every call site, a precise string.
+- The file is sent to TypeSafe. Do not use it for files that may not leave your machine.
+- At most eight parts per file; beyond that the answer says how much it did not read.
+- One Node file, no dependencies.
+
+MIT.

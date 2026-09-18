@@ -16,7 +16,7 @@ const MODEL = clean(process.env.JEV_ASK_MODEL) || "jev-latest";
 const MAX_CHARS = Number(clean(process.env.JEV_ASK_MAX_CHARS)) || 60000;
 const CONCURRENCY = 6;
 const NAME = "jev-ask";
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 /** The key, in order: this plugin's own setting, then the environment. */
 function key() {
@@ -59,12 +59,58 @@ async function ask(state, questions) {
   };
 }
 
-async function fileState(path) {
-  const full = resolve(path);
-  let text = await readFile(full, "utf8");
-  const cut = text.length > MAX_CHARS;
-  if (cut) text = text.slice(0, MAX_CHARS);
-  return { state: { path, content: text }, chars: text.length, cut };
+const OVERLAP_LINES = 20;   // a fact that straddles a boundary should land whole in one part
+const MAX_PARTS = 8;        // a guard against paying for a very large file by accident
+
+/** Cut a file into parts on line boundaries, each within the request budget. */
+function parts(text) {
+  const lines = text.split("\n");
+  if (text.length <= MAX_CHARS) return [{ text, from: 1, to: lines.length, whole: true }];
+
+  const out = [];
+  let start = 0;
+  while (start < lines.length && out.length < MAX_PARTS) {
+    let end = start, size = 0;
+    while (end < lines.length && size + lines[end].length + 1 <= MAX_CHARS) {
+      size += lines[end].length + 1;
+      end++;
+    }
+    if (end === start) end = start + 1;              // one line longer than the budget
+    out.push({ text: lines.slice(start, end).join("\n"), from: start + 1, to: end, whole: false });
+    if (end >= lines.length) break;
+    start = Math.max(end - OVERLAP_LINES, start + 1);
+  }
+  const covered = out.length ? out[out.length - 1].to : 0;
+  return Object.assign(out, { short: covered < lines.length ? lines.length - covered : 0 });
+}
+
+async function readParts(path) {
+  const text = await readFile(resolve(path), "utf8");
+  return { pieces: parts(text), chars: text.length };
+}
+
+/** Ask every part, and keep the highest answer per question with the part it came from. */
+async function askParts(path, pieces, questions) {
+  const answers = await pool(pieces, (piece) =>
+    ask({ path, content: piece.text }, questions).then((a) => ({ ...a, piece })));
+
+  const failed = answers.find((a) => a.error);
+  if (failed) throw new Error(failed.error);
+
+  const tokens = answers.reduce((sum, a) => sum + a.tokens, 0);
+  const best = questions.map((_, i) => {
+    let top = { value: null, piece: pieces[0] };
+    for (const a of answers) {
+      const v = a.values[i];
+      if (v !== null && (top.value === null || v > top.value)) top = { value: v, piece: a.piece };
+    }
+    return top;
+  });
+  return { best, tokens, model: answers[0]?.model ?? MODEL };
+}
+
+function where(piece, count) {
+  return count < 2 || piece.whole ? "" : `  [lines ${piece.from}-${piece.to}]`;
 }
 
 /** Run tasks a few at a time, keeping the order of the results. */
@@ -134,25 +180,28 @@ function pct(value) {
 
 async function askFile({ path, questions }) {
   if (!Array.isArray(questions) || questions.length === 0) throw new Error("give at least one question");
-  const { state, chars, cut } = await fileState(path);
-  const answer = await ask(state, questions);
-  const lines = questions.map((q, i) => `${pct(answer.values[i])}  ${q}`);
-  lines.push("", `${path} · ${chars} chars${cut ? " (cut)" : ""} · ${answer.tokens} tokens · ${answer.model}`);
+  const { pieces, chars } = await readParts(path);
+  const { best, tokens, model } = await askParts(path, pieces, questions);
+
+  const lines = questions.map((q, i) => `${pct(best[i].value)}${where(best[i].piece, pieces.length)}  ${q}`);
+  const spread = pieces.length > 1 ? ` · ${pieces.length} parts` : "";
+  const missed = pieces.short ? ` · ${pieces.short} lines beyond part ${MAX_PARTS} not read` : "";
+  lines.push("", `${path} · ${chars} chars${spread}${missed} · ${tokens} tokens · ${model}`);
   return text(lines.join("\n"));
 }
 
 async function filterFiles({ paths, question }) {
   if (!Array.isArray(paths) || paths.length === 0) throw new Error("give at least one path");
   const results = await pool(paths, async (path) => {
-    const { state, cut } = await fileState(path);
-    const answer = await ask(state, [question]);
-    return { path, value: answer.values[0], cut, tokens: answer.tokens };
+    const { pieces } = await readParts(path);
+    const { best, tokens } = await askParts(path, pieces, [question]);
+    return { path, value: best[0].value, piece: best[0].piece, count: pieces.length, tokens };
   });
   const ok = results.filter((r) => !r.error).sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
   const failed = results.filter((r) => r.error);
   const tokens = ok.reduce((sum, r) => sum + r.tokens, 0);
   const lines = [`${question}`, ""];
-  for (const r of ok) lines.push(`${pct(r.value)}  ${r.path}${r.cut ? "  (cut)" : ""}`);
+  for (const r of ok) lines.push(`${pct(r.value)}  ${r.path}${where(r.piece, r.count)}`);
   if (failed.length) {
     lines.push("", "could not read:");
     for (const r of failed) lines.push(`  ${r.error}`);

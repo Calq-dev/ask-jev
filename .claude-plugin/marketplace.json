@@ -1,15 +1,26 @@
 {
   "name": "jev-ask",
   "description": "Ask Jev about a file instead of reading it.",
-  "owner": { "name": "Calq", "url": "https://github.com/Calq-dev" },
+  "owner": {
+    "name": "Calq",
+    "url": "https://github.com/Calq-dev"
+  },
   "plugins": [
     {
       "name": "jev-ask",
       "description": "Two tools: one question about one file, and the same question across many files. The file goes to TypeSafe, never into the agent's context.",
-      "version": "0.1.0",
-      "author": { "name": "Calq", "url": "https://github.com/Calq-dev" },
+      "version": "0.2.0",
+      "author": {
+        "name": "Calq",
+        "url": "https://github.com/Calq-dev"
+      },
       "license": "MIT",
-      "keywords": ["typesafe", "jev", "tokens", "context"],
+      "keywords": [
+        "typesafe",
+        "jev",
+        "tokens",
+        "context"
+      ],
       "source": "./"
     }
   ]
