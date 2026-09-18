@@ -1,0 +1,20 @@
+{
+  "name": "jev-ask",
+  "version": "0.1.0",
+  "description": "Ask Jev a question about a file instead of reading it into context.",
+  "license": "MIT",
+  "userConfig": {
+    "model": {
+      "type": "string",
+      "title": "Jev model",
+      "description": "TypeSafe Jev model name.",
+      "default": "jev-latest"
+    },
+    "maxChars": {
+      "type": "number",
+      "title": "Maximum characters per file",
+      "description": "A file longer than this is cut; the tool says so in its answer.",
+      "default": 60000
+    }
+  }
+}
