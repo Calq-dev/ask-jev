@@ -1,6 +1,6 @@
 {
   "name": "ask-jev",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Ask Jev a question about a file instead of reading it into context.",
   "license": "MIT",
   "userConfig": {

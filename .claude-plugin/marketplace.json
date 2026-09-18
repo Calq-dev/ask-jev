@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "ask-jev",
-      "description": "Two tools: one question about one file, and the same question across many files. The file goes to TypeSafe, never into the agent's context.",
-      "version": "0.3.0",
+      "description": "Three tools: questions about one file, the same question across many files, and which line answers a question. The file goes to TypeSafe, never into the agent's context.",
+      "version": "0.4.0",
       "author": {
         "name": "Calq",
         "url": "https://github.com/Calq-dev"
